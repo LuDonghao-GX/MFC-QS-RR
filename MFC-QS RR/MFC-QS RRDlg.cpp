@@ -241,6 +241,7 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 
 		// 输出至日志
 		outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
+		outfile << "当前进程数量：" << currentPCBnum << endl;
 		outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 		outLog(readyQu, "就绪队列");
 		outLog(inputQu, "输入等待队列");
@@ -251,14 +252,9 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 		if (currentPCBnum <= 0) {
 			outfile << endl << "============================ 调度完成 ============================" << endl;
 
-			int nResult = AfxMessageBox(_T("调度完成！"), MB_OK | MB_ICONINFORMATION);
+			AfxMessageBox(_T("调度完成！"), MB_OK | MB_ICONINFORMATION);
 
-			// 根据用户的选择执行相应的操作
-			if (nResult == IDOK) {
-				// 用户点击了“确定”按钮
-				OnBnClickedButtonreset();
-
-			}
+			
 		}
 	}
 	
@@ -450,6 +446,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 
 	// 输出至日志
 	outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
+	outfile << "当前进程数量：" << currentPCBnum << endl;
 	outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 	outLog(readyQu, "就绪队列");
 	outLog(inputQu, "输入等待队列");
