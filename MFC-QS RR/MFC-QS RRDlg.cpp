@@ -209,7 +209,7 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 				otherQu.push(currentPCB);
 				break;
 			case HALT:
-				delete currentPCB;
+				currentPCB = NULL;
 				currentPCBnum--;
 				break;
 			}
@@ -238,7 +238,6 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 		str.Format(_T("%d"), currentPCBnum);
 		GetDlgItem(IDC_EDIT_current)->SetWindowText(str);
 
-
 		// 输出至日志
 		outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
 		outfile << "当前进程数量：" << currentPCBnum << endl;
@@ -254,10 +253,10 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 
 			AfxMessageBox(_T("调度完成！"), MB_OK | MB_ICONINFORMATION);
 
-			
+
 		}
 	}
-	
+
 }
 
 
