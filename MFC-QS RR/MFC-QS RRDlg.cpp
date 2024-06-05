@@ -72,7 +72,7 @@ void CMFCQSRRDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_current, currentPCBnum);
 	DDX_Text(pDX, IDC_EDIT_total, totalPCBnum);
 	DDX_Text(pDX, IDC_EDIT_this, thisPCB);
-	DDX_Text(pDX, IDC_EDIT_num, timeSlice);
+	DDX_Text(pDX, IDC_EDIT_slice, timeSlice);
 }
 
 BEGIN_MESSAGE_MAP(CMFCQSRRDlg, CDialogEx)
@@ -121,7 +121,7 @@ BOOL CMFCQSRRDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-	SetTimer(TIMERID, 1000, 0);	// 设置定时器,1秒启动一次
+	SetTimer(TIMERID, timeSlice, 0);	// 设置定时器，时间片大小为定时器调用时间间隔，1000为1秒，
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -176,110 +176,49 @@ HCURSOR CMFCQSRRDlg::OnQueryDragIcon()
 }
 
 
-void processingHelp(queue<PCB*> &qu,int &currentPCBnum) {
-	while (!qu.empty())
-	{
-		PCB* pCB = qu.front();
-		pCB->runInstruction();
-		int type = pCB->getNextI()->getType();  //获取当前PCB的第一条指令的类型
-
-		switch (type)
-		{
-		default:
-			break;
-		case COMPUTE:
-			ready.push(pCB);
-			qu.pop();
-		case INPUT1:
-			input.push(pCB);
-			qu.pop();
-			break;
-		case OUTPUT:
-			output.push(pCB);
-			qu.pop();
-			break;
-		case WAIT:
-			other.push(pCB);
-			qu.pop();
-			break;
-		case HALT:
-			delete pCB;
-			currentPCBnum--;
-			break;
-		}
-
-	}
-}
-
-
 
 void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (startF && currentPCBnum > 0) {
 
 		//处理三个等待队列的PCB
-		processingHelp(input, currentPCBnum);
-		processingHelp(output, currentPCBnum);
-		processingHelp(other, currentPCBnum);
+		runInput();
+		runOutput();
+		runOther();
+
 
 		// 处理当前运行进程
 		if (currentPCB != NULL) {
 			currentPCB->runInstruction();
-			InstructionType type = currentPCB->getNextI()->getType();
+			InstructionType type = currentPCB->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+
 			switch (type)
 			{
 			default:
 				break;
 			case COMPUTE:
-				ready.push(currentPCB);
+				readyQu.push(currentPCB);
+				break;
 			case INPUT1:
-				input.push(currentPCB);
+				inputQu.push(currentPCB);
 				break;
 			case OUTPUT:
-				output.push(currentPCB);
+				outputQu.push(currentPCB);
 				break;
 			case WAIT:
-				other.push(currentPCB);
+				otherQu.push(currentPCB);
 				break;
 			case HALT:
-				currentPCB = NULL;
+				delete currentPCB;
 				currentPCBnum--;
 				break;
 			}
+
 		}
 
 		// 处理就绪队列
-		while (!ready.empty()) {
-			PCB* pCB = ready.front();
-			InstructionType type = pCB->getNextI()->getType();
-			if (type == COMPUTE) {
-				currentPCB = pCB;
-				ready.pop();
-				break;
-			}
-			switch (type)
-			{
-			default:
-				break;
-			case INPUT1:
-				input.push(pCB);
-				ready.pop();
-				break;
-			case OUTPUT:
-				output.push(pCB);
-				ready.pop();
-				break;
-			case WAIT:
-				other.push(pCB);
-				ready.pop();
-				break;
-			case HALT:
-				pCB = NULL;
-				currentPCBnum--;
-				ready.pop();
-				break;
-			}
-		}
+		runReady();
+
 
 		if (currentPCB == NULL) {
 			thisPCB = _T("NONE");
@@ -289,10 +228,10 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 		}
 
 		// 输出至控件
-		q2e(ready, IDC_EDIT_CONTENT);
-		q2e(input, IDC_EDIT_CONTENT2);
-		q2e(output, IDC_EDIT_CONTENT3);
-		q2e(other, IDC_EDIT_CONTENT4);
+		q2e(readyQu, IDC_EDIT_CONTENT);
+		q2e(inputQu, IDC_EDIT_CONTENT2);
+		q2e(outputQu, IDC_EDIT_CONTENT3);
+		q2e(otherQu, IDC_EDIT_CONTENT4);
 		GetDlgItem(IDC_EDIT_this)->SetWindowText(thisPCB);
 
 		CString str;
@@ -304,14 +243,11 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 
 		// 输出至日志
 		outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
-		outLog(ready, "就绪队列");
-		outLog(input, "输入等待队列");
-		outLog(output, "输出等待队列");
-		outLog(other, "其他等待队列");
+		outLog(readyQu, "就绪队列");
+		outLog(inputQu, "输入等待队列");
+		outLog(outputQu, "输出等待队列");
+		outLog(otherQu, "其他等待队列");
 		outfile << "当前运行进程：" << c2s(thisPCB) << endl;
-
-
-
 
 	}
 
@@ -364,7 +300,7 @@ void CMFCQSRRDlg::OnBnClickedButtonopen()
 				totalPCBnum++;// 计算PCB总数
 				currentPCBnum++;// 计算当前PCB数
 
-				allPCB.push(currentPCB);// 将pcb装入队列中
+				allPCBQu.push(currentPCB);// 将pcb装入队列中
 
 				currentInstruction = nullptr;
 				lastInstruction = nullptr;
@@ -391,7 +327,7 @@ void CMFCQSRRDlg::OnBnClickedButtonopen()
 		}
 		file.Close();
 
-		outLog(allPCB, "所有进程队列");
+		outLog(allPCBQu, "所有进程队列");
 		//outLog(allPCB, "all PCB 1：");
 
 
@@ -409,10 +345,8 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 {
 	// TODO: 在此添加控件通知处理程序代码
 
-	startF = true;
-
 	// 检查是否打开文件
-	if (allPCB.empty()) {
+	if (allPCBQu.empty()) {
 		// 弹出警告对话框
 		AfxMessageBox(_T("请打开模拟进程文件!"), MB_ICONWARNING);
 		CMFCQSRRDlg::OnBnClickedButtonopen();
@@ -420,7 +354,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 
 	// 获取时间片大小
 	CString timeText;
-	GetDlgItem(IDC_EDIT_num)->GetWindowText(timeText);
+	GetDlgItem(IDC_EDIT_slice)->GetWindowText(timeText);
 	timeSlice = _ttoi(timeText);// CString => int
 	if (timeSlice == 0) {
 		// 弹出警告对话框
@@ -428,7 +362,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 		return;
 	}
 	else {
-		GetDlgItem(IDC_EDIT_num)->EnableWindow(false);
+		GetDlgItem(IDC_EDIT_slice)->EnableWindow(false);
 	}
 
 	GetDlgItem(IDC_BUTTON_start)->EnableWindow(false);
@@ -438,10 +372,13 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 	outfile << endl << "设定时间片大小：" << timeSlice << endl
 		<< endl << "开始进行调度！" << endl;
 
+	startF = true;// 设置开始标识符
+
+
 	// 检索所有PCB的第一条指令的类型，
 	// 并将指令装入对应的等待队列，
 	// 直至检索到 COMPUTE 类型
-	queue<PCB*>temp = allPCB;
+	queue<PCB*>temp = allPCBQu;
 	while (!temp.empty())
 	{
 		PCB* tempPCB = temp.front();
@@ -457,15 +394,15 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 		default:
 			break;
 		case INPUT1:
-			input.push(tempPCB);
+			inputQu.push(tempPCB);
 			temp.pop();
 			break;
 		case OUTPUT:
-			output.push(tempPCB);
+			outputQu.push(tempPCB);
 			temp.pop();
 			break;
 		case WAIT:
-			other.push(tempPCB);
+			otherQu.push(tempPCB);
 			temp.pop();
 			break;
 		case HALT:
@@ -476,10 +413,10 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 	}
 
 	// 将剩余的PCB装入就绪队列
-	while (!input.empty()) {
-		PCB* inputPCB = input.front();
-		ready.push(inputPCB);
-		input.pop();
+	while (!temp.empty()) {
+		PCB* tempPCB = temp.front();
+		readyQu.push(tempPCB);
+		temp.pop();
 	}
 
 	if (currentPCB == NULL) {
@@ -490,10 +427,10 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 	}
 
 	// 输出至控件
-	q2e(ready, IDC_EDIT_CONTENT);
-	q2e(input, IDC_EDIT_CONTENT2);
-	q2e(output, IDC_EDIT_CONTENT3);
-	q2e(other, IDC_EDIT_CONTENT4);
+	q2e(readyQu, IDC_EDIT_CONTENT);
+	q2e(inputQu, IDC_EDIT_CONTENT2);
+	q2e(outputQu, IDC_EDIT_CONTENT3);
+	q2e(otherQu, IDC_EDIT_CONTENT4);
 	GetDlgItem(IDC_EDIT_this)->SetWindowText(thisPCB);
 
 	CString str;
@@ -505,10 +442,10 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 
 	// 输出至日志
 	outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
-	outLog(ready, "就绪队列");
-	outLog(input, "输入等待队列");
-	outLog(output, "输出等待队列");
-	outLog(other, "其他等待队列");
+	outLog(readyQu, "就绪队列");
+	outLog(inputQu, "输入等待队列");
+	outLog(outputQu, "输出等待队列");
+	outLog(otherQu, "其他等待队列");
 	outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 
 }
@@ -522,8 +459,10 @@ void CMFCQSRRDlg::OnBnClickedButtonsuspend()
 	GetDlgItem(IDC_BUTTON_suspend)->EnableWindow(false);
 
 	startF = false;
-	//outfile << ;
-	outLog(allPCB, "暂停 allPCB：");
+	outfile << endl
+		<< "========================= 暂停调度 =========================" << endl
+		<< endl;
+
 }
 
 
@@ -538,8 +477,8 @@ void CMFCQSRRDlg::OnBnClickedButtonreset()
 
 	timeSlice = 0;
 	str.Format(_T("%d"), timeSlice);
-	GetDlgItem(IDC_EDIT_num)->SetWindowText(str);
-	GetDlgItem(IDC_EDIT_num)->EnableWindow(true);
+	GetDlgItem(IDC_EDIT_slice)->SetWindowText(str);
+	GetDlgItem(IDC_EDIT_slice)->EnableWindow(true);
 
 
 	currentPCBnum = 0;
@@ -561,10 +500,167 @@ void CMFCQSRRDlg::OnBnClickedButtonreset()
 	GetDlgItem(IDC_EDIT_CONTENT3)->SetWindowText(cls);
 	GetDlgItem(IDC_EDIT_CONTENT4)->SetWindowText(cls);
 
-	clear(ready);
-	clear(input);
-	clear(output);
-	clear(other);
-	clear(allPCB);
+	clear(readyQu);
+	clear(inputQu);
+	clear(outputQu);
+	clear(otherQu);
+	clear(allPCBQu);
 
+	outfile << endl
+		<< "========================= 重置 =========================" << endl
+		<< endl;
+
+}
+
+
+// 就绪队列执行
+void CMFCQSRRDlg::runReady() {
+	if (startF && currentPCBnum > 0) {
+		while (!readyQu.empty()) {
+			PCB* pCB = readyQu.front();
+			InstructionType type = pCB->getNextI()->getType();
+			if (type == COMPUTE) {
+				currentPCB = pCB;
+				readyQu.pop();
+				break;
+			}
+			switch (type)
+			{
+			default:
+				break;
+			case INPUT1:
+				inputQu.push(pCB);
+				readyQu.pop();
+				break;
+			case OUTPUT:
+				outputQu.push(pCB);
+				readyQu.pop();
+				break;
+			case WAIT:
+				otherQu.push(pCB);
+				readyQu.pop();
+				break;
+			case HALT:
+				pCB = NULL;
+				currentPCBnum--;
+				readyQu.pop();
+				break;
+			}
+		}
+	}
+}
+// 输入队列执行
+void CMFCQSRRDlg::runInput() {
+
+	int n = inputQu.size();
+	for (int i = 0; i < n; i++) {
+		PCB* pcb = inputQu.front();
+		pcb->runInstruction();
+		InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+
+		switch (type)
+		{
+		default:
+			break;
+		case COMPUTE:
+			readyQu.push(pcb);
+			break;
+		case INPUT1:
+			inputQu.push(pcb);
+			break;
+		case OUTPUT:
+			outputQu.push(pcb);
+			break;
+		case WAIT:
+			otherQu.push(pcb);
+			break;
+		case HALT:
+			delete pcb;
+			currentPCBnum--;
+			break;
+		}
+
+		//outfile << endl << "===========test==============" << endl;
+		//outfile << pcb->getPName() << " " << pcb->getRunTime() << endl;
+		//outLog(readyQu, "就绪队列");
+		//outLog(inputQu, "输入等待队列");
+		//outLog(outputQu, "输出等待队列");
+		//outLog(otherQu, "其他等待队列");
+		//outfile << endl << "============test=============" << endl;
+
+		inputQu.pop();
+
+	}
+	//exchange(inputQu);
+}
+
+// 输出队列执行
+void CMFCQSRRDlg::runOutput() {
+
+	int n = outputQu.size();
+	for (int i = 0; i < n; i++) {
+		PCB* pcb = outputQu.front();
+		pcb->runInstruction();
+		InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+
+		switch (type)
+		{
+		default:
+			break;
+		case COMPUTE:
+			readyQu.push(pcb);
+			break;
+		case INPUT1:
+			inputQu.push(pcb);
+			break;
+		case OUTPUT:
+			outputQu.push(pcb);
+			break;
+		case WAIT:
+			otherQu.push(pcb);
+			break;
+		case HALT:
+			delete pcb;
+			currentPCBnum--;
+			break;
+		}
+
+		outputQu.pop();
+	}
+
+}
+
+// 其他队列执行
+void CMFCQSRRDlg::runOther() {
+
+	int n = otherQu.size();
+	for (int i = 0; i < n; i++) {
+		PCB* pcb = otherQu.front();
+		pcb->runInstruction();
+		InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+
+		switch (type)
+		{
+		default:
+			break;
+		case COMPUTE:
+			readyQu.push(pcb);
+			break;
+		case INPUT1:
+			inputQu.push(pcb);
+			break;
+		case OUTPUT:
+			outputQu.push(pcb);
+			break;
+		case WAIT:
+			otherQu.push(pcb);
+			break;
+		case HALT:
+			delete pcb;
+			currentPCBnum--;
+			break;
+		}
+
+		otherQu.pop();
+	}
 }

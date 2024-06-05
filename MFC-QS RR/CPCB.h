@@ -55,7 +55,7 @@ PCB::~PCB()
 
 void PCB::runInstruction() {
     runTime--;
-    if (runTime == 0) {
+    if (runTime < 0) {
         deleteInstruction();
     }
 }

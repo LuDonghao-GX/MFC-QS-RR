@@ -5,15 +5,19 @@
 
 
 // 所有进程队列
-queue<PCB*> allPCB;
+queue<PCB*> allPCBQu;
 // 就绪等待队列
-queue<PCB*> ready;
+queue<PCB*> readyQu;
 // 输出等待队列
-queue<PCB*> output;
+queue<PCB*> outputQu;
 // 输入等待队列
-queue<PCB*> input;
+queue<PCB*> inputQu;
 // 其他等待队列
-queue<PCB*> other;
+queue<PCB*> otherQu;
+
+// 备用队列
+queue<PCB*> standbyQu;
+
 // 当前运行的PCB
 PCB* currentPCB;
 // 输出日志文件指针
@@ -52,7 +56,7 @@ void createLogFile() {
 
 
 // 将队列中PCB对象的进程名写入指定ID的控件
-void q2e(queue<PCB*>& qu, int nID) {
+void q2e(queue<PCB*> qu, int nID) {
 	// 假设这是在对话框中使用，获取对话框的指针
 	CWnd* pDlg = AfxGetApp()->GetMainWnd();
 
@@ -82,7 +86,7 @@ void outLog(queue<PCB*>qu, string quName) {
 	string strText;
 	outfile << quName << "：";
 	while (!temp.empty()) {
-		outfile << temp.front()->getPName() << " ";
+		outfile << temp.front()->getPName() <<"("<<temp.front()->getNextI()->getCName() << ")  ";
 		temp.pop(); // 移除队列头部的元素
 	}
 	outfile << endl;
@@ -94,3 +98,19 @@ void clear(queue<PCB*>& q) {
 	swap(empty, q);
 }
 
+// 与备用队列交换
+void exchange(queue<PCB*>& qu) {
+	swap(qu, standbyQu);
+	clear(standbyQu);
+}
+
+void test(queue<PCB*>qu, string quName) {
+	queue<PCB*> temp = qu;
+	string strText;
+	cout << quName << "：";
+	while (!temp.empty()) {
+		cout << temp.front()->getPName() << "(" << temp.front()->getNextI()->getCName() << ")  ";
+		temp.pop(); // 移除队列头部的元素
+	}
+	cout << endl;
+}

@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "CPRC.h"
 
 
 // CMFCQSRRDlg 对话框
@@ -42,7 +41,15 @@ public:
 
 	// 定时器调用函数
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	//void processingHelp(queue<PCB*>& qu);
+
+	// 就绪队列执行
+	void runReady();
+	// 输入队列执行
+	void runInput();
+	// 输出队列执行
+	void runOutput();
+	// 其他队列执行
+	void runOther();
 
 	// 当前PCB数
 	int currentPCBnum;
@@ -56,6 +63,8 @@ public:
 	bool startF = false;
 	// 调度次数
 	int schedulingTimes;
+
+
 
 };
 
