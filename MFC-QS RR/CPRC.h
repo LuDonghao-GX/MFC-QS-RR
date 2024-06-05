@@ -49,7 +49,7 @@ void createLogFile() {
 	}
 	else {
 		// 文件创建失败，弹出错误消息
-		AfxMessageBox(_T("无法创建日志文件"), MB_ICONERROR);
+		AfxMessageBox(_T("无法创建日志文件！"), MB_ICONERROR);
 		return;
 	}
 }
@@ -86,7 +86,7 @@ void outLog(queue<PCB*>qu, string quName) {
 	string strText;
 	outfile << quName << "：";
 	while (!temp.empty()) {
-		outfile << temp.front()->getPName() <<"("<<temp.front()->getNextI()->getCName() << ")  ";
+		outfile << temp.front()->getPName()/* <<"("<<temp.front()->getNextI()->getCName() << ")"*/<<"  ";
 		temp.pop(); // 移除队列头部的元素
 	}
 	outfile << endl;

@@ -241,6 +241,7 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 
 		// 输出至日志
 		outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
+		outfile << "当前进程数量：" << currentPCBnum << endl;
 		outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 		outLog(readyQu, "就绪队列");
 		outLog(inputQu, "输入等待队列");
@@ -251,14 +252,9 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 		if (currentPCBnum <= 0) {
 			outfile << endl << "============================ 调度完成 ============================" << endl;
 
-			int nResult = AfxMessageBox(_T("调度完成！"), MB_OK | MB_ICONINFORMATION);
+			AfxMessageBox(_T("调度完成！"), MB_OK | MB_ICONINFORMATION);
 
-			// 根据用户的选择执行相应的操作
-			if (nResult == IDOK) {
-				// 用户点击了“确定”按钮
-				OnBnClickedButtonreset();
-
-			}
+			
 		}
 	}
 	
@@ -356,7 +352,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 	// 检查是否打开文件
 	if (allPCBQu.empty()) {
 		// 弹出警告对话框
-		AfxMessageBox(_T("请打开模拟进程文件!"), MB_ICONWARNING);
+		AfxMessageBox(_T("请打开模拟进程文件！"), MB_ICONWARNING);
 		CMFCQSRRDlg::OnBnClickedButtonopen();
 	}
 
@@ -450,6 +446,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 
 	// 输出至日志
 	outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
+	outfile << "当前进程数量：" << currentPCBnum << endl;
 	outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 	outLog(readyQu, "就绪队列");
 	outLog(inputQu, "输入等待队列");
@@ -523,152 +520,157 @@ void CMFCQSRRDlg::OnBnClickedButtonreset()
 
 // 就绪队列执行
 void CMFCQSRRDlg::runReady() {
-	if (startF && currentPCBnum > 0) {
-		while (!readyQu.empty()) {
-			PCB* pCB = readyQu.front();
-			InstructionType type = pCB->getNextI()->getType();
-			if (type == COMPUTE) {
-				currentPCB = pCB;
-				readyQu.pop();
-				break;
-			}
-			switch (type)
-			{
-			default:
-				break;
-			case INPUT1:
-				inputQu.push(pCB);
-				readyQu.pop();
-				break;
-			case OUTPUT:
-				outputQu.push(pCB);
-				readyQu.pop();
-				break;
-			case WAIT:
-				otherQu.push(pCB);
-				readyQu.pop();
-				break;
-			case HALT:
-				pCB = NULL;
-				currentPCBnum--;
-				readyQu.pop();
-				break;
-			}
+	while (!readyQu.empty()) {
+		PCB* pCB = readyQu.front();
+		InstructionType type = pCB->getNextI()->getType();
+		if (type == COMPUTE) {
+			currentPCB = pCB;
+			readyQu.pop();
+			break;
 		}
-	}
-}
-// 输入队列执行
-void CMFCQSRRDlg::runInput() {
-
-	int n = inputQu.size();
-	for (int i = 0; i < n; i++) {
-		PCB* pcb = inputQu.front();
-		pcb->runInstruction();
-		InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
-
 		switch (type)
 		{
 		default:
 			break;
-		case COMPUTE:
-			readyQu.push(pcb);
-			break;
 		case INPUT1:
-			inputQu.push(pcb);
+			inputQu.push(pCB);
+			readyQu.pop();
 			break;
 		case OUTPUT:
-			outputQu.push(pcb);
+			outputQu.push(pCB);
+			readyQu.pop();
 			break;
 		case WAIT:
-			otherQu.push(pcb);
+			otherQu.push(pCB);
+			readyQu.pop();
 			break;
 		case HALT:
-			delete pcb;
+			pCB = NULL;
 			currentPCBnum--;
+			readyQu.pop();
 			break;
 		}
-
-		//outfile << endl << "===========test==============" << endl;
-		//outfile << pcb->getPName() << " " << pcb->getRunTime() << endl;
-		//outLog(readyQu, "就绪队列");
-		//outLog(inputQu, "输入等待队列");
-		//outLog(outputQu, "输出等待队列");
-		//outLog(otherQu, "其他等待队列");
-		//outfile << endl << "============test=============" << endl;
-
-		inputQu.pop();
-
 	}
-	//exchange(inputQu);
+
+}
+
+// 输入队列执行
+void CMFCQSRRDlg::runInput() {
+	if (!inputQu.empty()) {
+		int n = inputQu.size();
+		for (int i = 0; i < n; i++) {
+			PCB* pcb = inputQu.front();
+			pcb->runInstruction();
+			InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+
+			switch (type)
+			{
+			default:
+				break;
+			case COMPUTE:
+				readyQu.push(pcb);
+				break;
+			case INPUT1:
+				inputQu.push(pcb);
+				break;
+			case OUTPUT:
+				outputQu.push(pcb);
+				break;
+			case WAIT:
+				otherQu.push(pcb);
+				break;
+			case HALT:
+				delete pcb;
+				currentPCBnum--;
+				break;
+			}
+
+			//outfile << endl << "===========test==============" << endl;
+			//outfile << pcb->getPName() << " " << pcb->getRunTime() << endl;
+			//outLog(readyQu, "就绪队列");
+			//outLog(inputQu, "输入等待队列");
+			//outLog(outputQu, "输出等待队列");
+			//outLog(otherQu, "其他等待队列");
+			//outfile << endl << "============test=============" << endl;
+
+			inputQu.pop();
+
+		}
+		//exchange(inputQu);
+	}
 }
 
 // 输出队列执行
 void CMFCQSRRDlg::runOutput() {
 
-	int n = outputQu.size();
-	for (int i = 0; i < n; i++) {
-		PCB* pcb = outputQu.front();
-		pcb->runInstruction();
-		InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+	if (!outputQu.empty()) {
+		int n = outputQu.size();
+		for (int i = 0; i < n; i++) {
+			PCB* pcb = outputQu.front();
+			pcb->runInstruction();
+			InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
 
-		switch (type)
-		{
-		default:
-			break;
-		case COMPUTE:
-			readyQu.push(pcb);
-			break;
-		case INPUT1:
-			inputQu.push(pcb);
-			break;
-		case OUTPUT:
-			outputQu.push(pcb);
-			break;
-		case WAIT:
-			otherQu.push(pcb);
-			break;
-		case HALT:
-			delete pcb;
-			currentPCBnum--;
-			break;
+			switch (type)
+			{
+			default:
+				break;
+			case COMPUTE:
+				readyQu.push(pcb);
+				break;
+			case INPUT1:
+				inputQu.push(pcb);
+				break;
+			case OUTPUT:
+				outputQu.push(pcb);
+				break;
+			case WAIT:
+				otherQu.push(pcb);
+				break;
+			case HALT:
+				delete pcb;
+				currentPCBnum--;
+				break;
+			}
+
+			outputQu.pop();
 		}
-
-		outputQu.pop();
 	}
 
 }
 
 // 其他队列执行
 void CMFCQSRRDlg::runOther() {
+	if (!otherQu.empty()) {
+		int n = otherQu.size();
+		for (int i = 0; i < n; i++) {
+			PCB* pcb = otherQu.front();
+			pcb->runInstruction();
+			InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
 
-	int n = otherQu.size();
-	for (int i = 0; i < n; i++) {
-		PCB* pcb = otherQu.front();
-		pcb->runInstruction();
-		InstructionType type = pcb->getNextI()->getType();  //获取当前pcb的第一条指令的类型
+			switch (type)
+			{
+			default:
+				break;
+			case COMPUTE:
+				readyQu.push(pcb);
+				break;
+			case INPUT1:
+				inputQu.push(pcb);
+				break;
+			case OUTPUT:
+				outputQu.push(pcb);
+				break;
+			case WAIT:
+				otherQu.push(pcb);
+				break;
+			case HALT:
+				delete pcb;
+				currentPCBnum--;
+				break;
+			}
 
-		switch (type)
-		{
-		default:
-			break;
-		case COMPUTE:
-			readyQu.push(pcb);
-			break;
-		case INPUT1:
-			inputQu.push(pcb);
-			break;
-		case OUTPUT:
-			outputQu.push(pcb);
-			break;
-		case WAIT:
-			otherQu.push(pcb);
-			break;
-		case HALT:
-			delete pcb;
-			currentPCBnum--;
-			break;
+			otherQu.pop();
 		}
-
-		otherQu.pop();
 	}
+	
 }
