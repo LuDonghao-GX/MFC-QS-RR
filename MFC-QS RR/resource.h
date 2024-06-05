@@ -19,7 +19,6 @@
 #define IDC_EDIT_current                1011
 #define IDC_EDIT_this                   1012
 #define IDC_BUTTON_reset                1013
-#define IDC_EDIT1                       1017
 #define IDC_EDIT_slice                  1017
 
 // Next default values for new objects

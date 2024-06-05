@@ -237,20 +237,31 @@ void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 		CString str;
 		str.Format(_T("%d"), currentPCBnum);
 		GetDlgItem(IDC_EDIT_current)->SetWindowText(str);
-		str.Format(_T("%d"), totalPCBnum);
-		GetDlgItem(IDC_EDIT_total)->SetWindowText(str);
 
 
 		// 输出至日志
 		outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
+		outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 		outLog(readyQu, "就绪队列");
 		outLog(inputQu, "输入等待队列");
 		outLog(outputQu, "输出等待队列");
 		outLog(otherQu, "其他等待队列");
-		outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 
+
+		if (currentPCBnum <= 0) {
+			outfile << endl << "============================ 调度完成 ============================" << endl;
+
+			int nResult = AfxMessageBox(_T("调度完成！"), MB_OK | MB_ICONINFORMATION);
+
+			// 根据用户的选择执行相应的操作
+			if (nResult == IDOK) {
+				// 用户点击了“确定”按钮
+				OnBnClickedButtonreset();
+
+			}
+		}
 	}
-
+	
 }
 
 
@@ -328,9 +339,6 @@ void CMFCQSRRDlg::OnBnClickedButtonopen()
 		file.Close();
 
 		outLog(allPCBQu, "所有进程队列");
-		//outLog(allPCB, "all PCB 1：");
-
-
 		outfile << "进程总数：" << totalPCBnum << endl
 			<< "初始化完成！" << endl
 			<< "===========================================================" << endl;
@@ -442,11 +450,11 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 
 	// 输出至日志
 	outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
+	outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 	outLog(readyQu, "就绪队列");
 	outLog(inputQu, "输入等待队列");
 	outLog(outputQu, "输出等待队列");
 	outLog(otherQu, "其他等待队列");
-	outfile << "当前运行进程：" << c2s(thisPCB) << endl;
 
 }
 
