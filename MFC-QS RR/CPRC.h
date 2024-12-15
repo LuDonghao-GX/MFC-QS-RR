@@ -57,7 +57,7 @@ void createLogFile() {
 
 // 将队列中PCB对象的进程名写入指定ID的控件
 void q2e(queue<PCB*> qu, int nID) {
-	// 假设这是在对话框中使用，获取对话框的指针
+	// 获取对话框的指针
 	CWnd* pDlg = AfxGetApp()->GetMainWnd();
 
 	// 根据控件ID获取控件指针

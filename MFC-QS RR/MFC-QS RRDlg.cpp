@@ -121,7 +121,7 @@ BOOL CMFCQSRRDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-	SetTimer(TIMERID, 5, 0);	// 设置定时器，时间片大小为定时器调用时间间隔，1000为1秒，
+	SetTimer(TIMERID, 100, 0);	// 设置定时器，时间片大小为定时器调用时间间隔，1000为1秒，
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -176,7 +176,7 @@ HCURSOR CMFCQSRRDlg::OnQueryDragIcon()
 }
 
 
-
+//3.开始定时器调度
 void CMFCQSRRDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (startF && currentPCBnum > 0) {
@@ -394,19 +394,19 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 			{
 			default:
 				break;
-			case COMPUTE:
+			case COMPUTE://就绪队列
 				readyQu.push(tempPCB);
 				temp.pop();
 				break;
-			case INPUT1:
+			case INPUT1://输入等待
 				inputQu.push(tempPCB);
 				temp.pop();
 				break;
-			case OUTPUT:
+			case OUTPUT://输出
 				outputQu.push(tempPCB);
 				temp.pop();
 				break;
-			case WAIT:
+			case WAIT://其他等待
 				otherQu.push(tempPCB);
 				temp.pop();
 				break;
@@ -416,7 +416,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 			}
 
 		}
-
+		//1.判断是否为空
 		if (!readyQu.empty())
 		{
 			currentPCB = readyQu.front();
@@ -432,7 +432,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 			thisPCB = currentPCB->getPName().c_str();
 		}
 
-		// 输出至控件
+		// 2.输出至控件
 		q2e(readyQu, IDC_EDIT_CONTENT);
 		q2e(inputQu, IDC_EDIT_CONTENT2);
 		q2e(outputQu, IDC_EDIT_CONTENT3);
@@ -446,7 +446,7 @@ void CMFCQSRRDlg::OnBnClickedButtonstart()
 		GetDlgItem(IDC_EDIT_total)->SetWindowText(str);
 
 
-		// 输出至日志
+		// 2.输出至日志
 		outfile << "============================ " << schedulingTimes++ << " ============================" << endl;
 		outfile << "当前进程数量：" << currentPCBnum << endl;
 		outfile << "当前运行进程：" << c2s(thisPCB) << endl;
