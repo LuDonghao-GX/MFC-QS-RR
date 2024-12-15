@@ -19,6 +19,7 @@ public:
     void setEndI(instruction* insn) { endI = insn; }
 
     void runInstruction();
+    void runInstruction(int time);
     void deleteInstruction();
 
     // »ñÈ¡º¯Êý£¨Getters£©
@@ -55,6 +56,12 @@ PCB::~PCB()
 
 void PCB::runInstruction() {
     runTime--;
+    if (runTime < 0) {
+        deleteInstruction();
+    }
+}
+void PCB::runInstruction(int time) {
+    runTime=runTime - time;
     if (runTime < 0) {
         deleteInstruction();
     }
